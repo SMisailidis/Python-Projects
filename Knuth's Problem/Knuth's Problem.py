@@ -1,3 +1,6 @@
+from __future__ import annotations
+import sys
+
 import math
 
 
@@ -6,9 +9,6 @@ class Node:
     def __init__(self, value: float, operation):
         self.value = value
         self.type = operation
-
-    def __init__(self, value: float):
-        self.value = value
 
     def expand(self) -> list[Node]:
         nodes: list[Node] = []
@@ -22,12 +22,16 @@ class Node:
 
         if self.value == floorV:
             factV = math.factorial(curValue)
-            nodes.append(Node(factV, "Factorial"))
+            if factV <= 2147483647:
+                child: Node = Node(float(factV), "Factorial")
+                nodes.append(child)
         else:
-            nodes.append(Node(floorV, "Floor"))
+            child: Node = Node(floorV, "Floor")
+            nodes.append(child)
 
         sqrtV = math.sqrt(self.value)
-        nodes.append(Node(sqrtV, "root"))
+        child: Node = Node(sqrtV, "root")
+        nodes.append(child)
 
         return nodes
 
@@ -43,26 +47,27 @@ class MyHashMap:
             print("The number you've tried to search, is your initial number!")
             exit(0)
 
-        return self.hashMap[goal]
+        for dictKey, dictValue in self.hashMap.items():
+            if goal == dictValue.value:
+                return float(dictKey)
 
     def getPath(self, i: float, initV: float) -> None:
+        key = i
         if i == 0:
+            return
+
+        if len(self.hashMap) == 0:
             return None
 
-        self.lPath.append(self.hashMap.get(i))
-
-        if i is not initV:
-            value: float = i
-            key = None
-            self.hashMap.pop(i)
-
-            for dictKey, dictValue in self.hashMap:
-                if dictValue == value:
+        if i != initV:
+            value = i
+            for dictKey, dictValue in self.hashMap.items():
+                if value == dictValue.value:
                     key = dictKey
 
             self.getPath(key, initV)
 
-        return None
+        return
 
     def printSolution(self) -> None:
         pass
@@ -151,7 +156,6 @@ class Queue:
 
 def algoInput():
     number = input("Give me the number you want to find:  ")
-    print(number)
 
     while True:
         print("Which Algorithm do you want to use?")
@@ -192,7 +196,7 @@ def IterativeDeepeningSearch(G: Graph, limit) -> bool:
     return False
 
 
-def DepthLimitedSearch(value, goal, hashMap, limit):
+def DepthLimitedSearch(value, goal, hashMap, limit) -> bool:
     if value == goal:
         return True
 
@@ -201,22 +205,23 @@ def DepthLimitedSearch(value, goal, hashMap, limit):
 
     children: list[Node]
 
-    children = Node(value).expand()
+    children = Node(value, 0).expand()
 
     for child in children:
-        hashMap.update(value, child)
+        hashMap[value] = child
         if DepthLimitedSearch(child.value, goal, hashMap, limit - 1):
             return True
     return False
 
 
 if __name__ == '__main__':
+
     target, algo = algoInput()
-    initialNumber = 4
+    initialNumber = 4.0
 
     graph: Graph = Graph(initialNumber, float(target))
 
-    if algo == 1:
+    if float(algo) == 1:
         node: Node = BreadthFirstSearch(graph)
         index = graph.mList.getTargetIndex(node)
         if index:
@@ -225,11 +230,13 @@ if __name__ == '__main__':
             print("The time to find the target with Breadth First Search algorithm was: ")
         else:
             print("Number not Found!")
-    else:
+    elif float(algo) == 2:
 
-        flag = IterativeDeepeningSearch(graph, 100)
+        flag = IterativeDeepeningSearch(graph, 10)
         if flag:
             index = graph.mHashMap.getTargetIndex(float(target))
             graph.mHashMap.getPath(index, initialNumber)
             graph.mHashMap.printSolution()
             print("The time to find the target with Iterative Deepening Search algorithm was: ")
+
+    sys.setrecursionlimit(1500)
