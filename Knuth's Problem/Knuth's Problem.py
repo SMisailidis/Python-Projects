@@ -1,19 +1,25 @@
 from __future__ import annotations
 import sys
-
 import math
 
 
+# BigInteger usage
+
 class Node:
 
-    def __init__(self, value: float, operation):
+    def __init__(self, value: float, operation, previous: int):
         self.value = value
+        self.prev = previous
         self.type = operation
 
-    def expand(self) -> list[Node]:
+    def expand(self, parentKey: int) -> list[Node]:
         nodes: list[Node] = []
 
         curValue = float(self.value)
+
+        sqrtV = math.sqrt(self.value)
+        child: Node = Node(sqrtV, "root", parentKey)
+        nodes.append(child)
 
         if abs(self.value - int(self.value) < 0.00000001):
             curValue = int(self.value)
@@ -22,16 +28,13 @@ class Node:
 
         if self.value == floorV:
             factV = math.factorial(curValue)
-            if factV <= 2147483647:
-                child: Node = Node(float(factV), "Factorial")
+
+            if factV < 620448401733239439360000:
+                child: Node = Node(float(factV), "Factorial", parentKey)
                 nodes.append(child)
         else:
-            child: Node = Node(floorV, "Floor")
+            child: Node = Node(floorV, "Floor", parentKey)
             nodes.append(child)
-
-        sqrtV = math.sqrt(self.value)
-        child: Node = Node(sqrtV, "root")
-        nodes.append(child)
 
         return nodes
 
@@ -39,79 +42,49 @@ class Node:
 class MyHashMap:
 
     def __init__(self):
+        self.previous = None
         self.hashMap: dict = dict()
         self.lPath: list[Node] = []
+        self.key = 0
 
-    def getTargetIndex(self, goal: float) -> float or None:
+    def add(self, key: int, value: Node) -> None:
+        self.hashMap[key] = value
+
+    def getIndex(self, goal: float) -> int or None:
+
         if len(self.hashMap) == 0:
             print("The number you've tried to search, is your initial number!")
             exit(0)
 
         for dictKey, dictValue in self.hashMap.items():
             if goal == dictValue.value:
-                return float(dictKey)
+                return int(dictKey)
 
-    def getPath(self, i: float, initV: float) -> None:
-        key = i
-        if i == 0:
+    def getPath(self, key: int, initV: float) -> None:
+
+        if key == -1:
             return
 
-        if len(self.hashMap) == 0:
-            return None
+        self.lPath.append(self.hashMap.get(key))
 
-        if i != initV:
-            value = i
-            for dictKey, dictValue in self.hashMap.items():
-                if value == dictValue.value:
-                    key = dictKey
+        for dictKey, dictValue in self.hashMap.items():
+            if key == dictKey:
+                self.previous = dictValue.prev
 
-            self.getPath(key, initV)
+        self.getPath(self.previous, initV)
 
         return
 
-    def printSolution(self) -> None:
-        pass
-
-
-class MyList:
-
-    def __init__(self):
-        self.list: list[list[Node]] = []
-        self.lPath: list[Node] = []
-
-    def addNode(self, n: Node, x) -> None:
-        self.list[x].append(n)
-
-    def getTargetIndex(self, goal: Node):
-
-        if len(self.list) == 0:
-            print("The number you've tried to search, is your initial number!")
-            exit(0)
-
-        if goal is None:
-            return None
-
-        for r in self.list:
-            if r.index(goal):
-                return r.index(goal)
-
-    def getPath(self, i) -> None:
-
-        if i is None:
-            return
-
-        previous: Node = self.list[i][0]
-
-        self.lPath.append(previous)
-
-        for i in range(i - 1, 0, -1):
-            for j in range(len(self.list[i])):
-                curr: Node = self.list[i][j]
-                if curr.value is previous.value:
-                    self.getPath(i)
+    def setId(self) -> int:
+        self.key += 1
+        return self.key
 
     def printSolution(self) -> None:
-        pass
+        self.lPath.pop(len(self.lPath) - 1)
+        self.lPath.reverse()
+
+        for value in self.lPath:
+            print(value.type)
 
 
 class Graph:
@@ -119,18 +92,12 @@ class Graph:
     def __init__(self, initialValue: float, goal: float):
         self.initV: float = initialValue
         self.goalV: float = goal
-        self.mList: MyList = MyList()
-        self.mHashMap: MyHashMap() = MyHashMap()
 
     def isGoal(self, value: float) -> bool:
-        return value is self.goalV
+        return value == self.goalV
 
 
 class Queue:
-    def __init__(self) -> None:
-        self.queue: list[Node] = []
-        self.left: int = 0
-        self.right: int = 0
 
     def __init__(self, nodeList: list[Node]) -> None:
         self.queue: nodeList[Node] = nodeList
@@ -167,36 +134,42 @@ def algoInput():
     return number, algorithm
 
 
-def BreadthFirstSearch(G: Graph) -> Node or None:
-    x = 0
-    firstNode: Node = Node(G.initV)
-    if G.isGoal(firstNode.value):
-        return firstNode
-    frontier = Queue([firstNode])
-    visited = [firstNode]
+def BreadthFirstSearch(G: Graph, hashM: MyHashMap) -> Node or None:
+    parentNode: Node = Node(G.initV, None, -1)
+
+    hashM.add(0, parentNode)
+
+    if G.isGoal(parentNode.value):
+        return parentNode
+
+    frontier = Queue([parentNode])
+    visited = [parentNode]
 
     while not frontier.isEmpty():
+
         removedNode = frontier.remove()
-        G.mList.addNode(removedNode, x)
-        for child in removedNode.expand():
+
+        for child in removedNode.expand(hashM.getIndex(removedNode.value)):
             curChildValue = child.value
-            G.mList.addNode(child, x)
+            hashM.add(hashM.setId(), child)
             if G.isGoal(curChildValue):
                 return child
             if curChildValue not in visited:
                 visited.append(curChildValue)
                 frontier.add(child)
-        x += 1
+    return None
 
 
-def IterativeDeepeningSearch(G: Graph, limit) -> bool:
+def IterativeDeepeningSearch(G: Graph, hashM: MyHashMap, limit: int) -> bool:
+    hashmap.add(0, Node(G.initV, None, -1))
+
     for i in range(limit):
-        if DepthLimitedSearch(G.initV, G.goalV, G.mHashMap.hashMap, i):
+        if DepthLimitedSearch(G.initV, G.goalV, hashM, i):
             return True
     return False
 
 
-def DepthLimitedSearch(value, goal, hashMap, limit) -> bool:
+def DepthLimitedSearch(value: float, goal: float, hashM: MyHashMap, limit: int) -> bool:
     if value == goal:
         return True
 
@@ -205,11 +178,13 @@ def DepthLimitedSearch(value, goal, hashMap, limit) -> bool:
 
     children: list[Node]
 
-    children = Node(value, 0).expand()
+    tempParent: Node = Node(value, None, -1)
+
+    children = tempParent.expand(hashM.getIndex(tempParent.value))
 
     for child in children:
-        hashMap[value] = child
-        if DepthLimitedSearch(child.value, goal, hashMap, limit - 1):
+        hashM.add(hashM.setId(), child)
+        if DepthLimitedSearch(child.value, goal, hashM, limit - 1):
             return True
     return False
 
@@ -219,24 +194,27 @@ if __name__ == '__main__':
     target, algo = algoInput()
     initialNumber = 4.0
 
+    hashmap: MyHashMap = MyHashMap()
     graph: Graph = Graph(initialNumber, float(target))
 
     if float(algo) == 1:
-        node: Node = BreadthFirstSearch(graph)
-        index = graph.mList.getTargetIndex(node)
-        if index:
-            graph.mList.getPath(index)
-            graph.mList.printSolution()
-            print("The time to find the target with Breadth First Search algorithm was: ")
-        else:
-            print("Number not Found!")
+        node: Node = BreadthFirstSearch(graph, hashmap)
+        if node:
+            index: int = hashmap.getIndex(node.value)
+
+            if index != 0:
+                hashmap.getPath(index, initialNumber)
+                hashmap.printSolution()
+                print("The time to find the target with Breadth First Search algorithm was: ")
+            else:
+                print("Number not Found!")
     elif float(algo) == 2:
 
-        flag = IterativeDeepeningSearch(graph, 10)
+        flag = IterativeDeepeningSearch(graph, hashmap, 10000)
         if flag:
-            index = graph.mHashMap.getTargetIndex(float(target))
-            graph.mHashMap.getPath(index, initialNumber)
-            graph.mHashMap.printSolution()
+            index = hashmap.getIndex(int(target))
+            hashmap.getPath(index, initialNumber)
+            hashmap.printSolution()
             print("The time to find the target with Iterative Deepening Search algorithm was: ")
 
     sys.setrecursionlimit(1500)
